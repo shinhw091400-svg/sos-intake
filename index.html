@@ -4,7 +4,7 @@
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SOS 예약접수</title>
+<title>세라미크명동 예약고객관리 x SOS</title>
 <style>
   :root{--blue:#2b6cff;--blue2:#e8f0fe;--ink:#1b2a41;--mute:#6b7a90;--line:#dbe3ef;--ok:#0f9d58;--warn:#e8710a;--bad:#d93025;--bg:#f5f8fd}
   *{box-sizing:border-box}
@@ -64,15 +64,15 @@
 <body>
 <div id="lock" class="hide" style="position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;align-items:center;justify-content:center">
   <div class="card" style="width:min(340px,90vw);text-align:center">
-    <h2 style="margin:0 0 4px;color:var(--blue)">SOS 예약접수</h2>
+    <h2 style="margin:0 0 4px;color:var(--blue);font-size:18px">세라미크명동 예약고객관리 x SOS</h2>
     <p class="muted" style="margin:0 0 12px">접속 코드를 입력해 주세요</p>
     <input id="code" type="password" autocomplete="off" style="width:100%;text-align:center;font-size:16px" onkeydown="if(event.key==='Enter')doLogin()">
     <button id="lockBtn" class="pri" style="width:100%;margin-top:10px" onclick="doLogin()">입장</button>
     <div id="lockErr" style="color:var(--bad);font-size:13px;margin-top:8px"></div>
   </div>
 </div>
-<header><h1>SOS 예약접수</h1>
-  <nav><button id="t1" class="on" onclick="tab(1)">접수</button><button id="t2" onclick="tab(2)">당일 현황·검색</button></nav>
+<header><h1>세라미크명동 예약고객관리 x SOS</h1>
+  <nav><button id="t1" class="on" onclick="tab(1)">접수</button><button id="t2" onclick="tab(2)">전체 예약 현황</button></nav>
 </header>
 <main>
 
@@ -106,8 +106,8 @@
 <section id="p2" class="hide">
   <div class="card">
     <div class="row">
-      <div><label>날짜</label><input type="date" id="qdate" onchange="load()"></div>
-      <div style="flex:1;min-width:200px"><label>검색 (이름·연락처·유입경로)</label><input id="q" style="width:100%" placeholder="입력 후 Enter — 비우면 위 날짜 기준" onkeydown="if(event.key==='Enter')load()"></div>
+      <div><label>보기</label><select id="qmode" onchange="load()"><option value="all">전체 예약</option><option value="upcoming">오늘 이후</option><option value="past">지난 예약</option></select></div>
+      <div style="flex:1;min-width:200px"><label>검색 (이름·연락처·유입경로·시술)</label><input id="q" style="width:100%" placeholder="입력 후 Enter — 비우면 전체" onkeydown="if(event.key==='Enter')load()"></div>
       <div style="align-self:flex-end"><button class="pri" onclick="load()">조회</button></div>
     </div>
     <div id="listInfo" class="muted" style="margin-top:8px"></div>
@@ -142,7 +142,7 @@ function doLogin(){
 }
 function init(){
   call('getOptions',[],function(o){
-    OPT=o; $('routes').innerHTML=o.routes.map(function(r){return '<option value="'+esc(r)+'">'}).join(''); $('qdate').value=o.today;
+    OPT=o; $('routes').innerHTML=o.routes.map(function(r){return '<option value="'+esc(r)+'">'}).join('');
   });
 }
 if(TOK) init(); else showLock();
@@ -153,15 +153,16 @@ function doParse(){
   var t=$('src').value; if(!t.trim()){alert('붙여넣은 내용이 없어요.');return;}
   call('parseText',[t],function(r){
     PARSED=r.records; $('saveMsg').innerHTML='';
+    var accs={}; PARSED.forEach(function(x){accs[x.sosAccount]=1}); if(Object.keys(accs).length>1) r.warnings.push('국적에 따라 SOS 계정이 다른 사람이 섞여 있어요(본사01/루하01). 한 팀은 대표 기준 계정으로 등록되니 확인해 주세요.');
     $('warns').innerHTML=r.warnings.map(function(w){return '<div class="warn">⚠ '+esc(w)+'</div>'}).join('');
     if(!PARSED.length){ $('review').classList.add('hide'); msg('warns','err','예약 정보를 찾지 못했어요. 양식을 확인해 주세요.'); return; }
     renderRecs(); $('group').checked=PARSED.length>1; $('review').classList.remove('hide');
   });
 }
-var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역','sel:,O,X']];
+var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
 function renderRecs(){
   $('recs').innerHTML=PARSED.map(function(r,i){
-    var h='<div class="rec"><h4>'+(i===0?'대표':'동행자 '+i)+(r.status?' · '+esc(r.status):'')+'</h4><div class="grid">';
+    var h='<div class="rec"><h4>'+(i===0?'대표':'동행자 '+i)+(r.status?' · '+esc(r.status):'')+(r.sosAccount?' · SOS '+esc(r.sosAccount):'')+'</h4><div class="grid">';
     FIELDS.forEach(function(f){
       var k=f[0],ty=f[2]||'text',v=r[k]||'';
       h+='<div><label>'+f[1]+'</label>';
@@ -189,34 +190,55 @@ function done(res,s){
   else if(s.err){ msg('saveMsg','err',t+'<br>SOS 전송 실패: '+esc(s.err)); }
   else {
     var bad=(s.results||[]).filter(function(x){return x.status!=='전송완료'});
-    if(bad.length) msg('saveMsg','err',t+'<br>SOS: '+bad.map(function(x){return esc(x.names.join(', '))+' → '+esc(x.status)+(x.message?' ('+esc(x.message)+')':'')}).join('<br>')+'<br><span class="muted">당일 현황 탭에서 다시 넘기거나, SOS에 직접 등록 후 [수동등록 표시]를 누르세요.</span>');
+    if(bad.length) msg('saveMsg','err',t+'<br>SOS: '+bad.map(function(x){return esc(x.names.join(', '))+' → '+esc(x.status)+(x.message?' ('+esc(x.message)+')':'')}).join('<br>')+'<br><span class="muted">전체 예약 현황 탭에서 다시 넘기거나, SOS에 직접 등록 후 [수동등록 표시]를 누르세요.</span>');
     else msg('saveMsg','ok',t+'<br>✓ SOS로 넘김 완료');
   }
   $('src').value=''; $('warns').innerHTML=''; PARSED=[]; $('recs').innerHTML='';
 }
 
-/* ───── 당일 현황 ───── */
+/* ───── 전체 예약 현황 ───── */
+var WD=['일','월','화','수','목','금','토'];
+function dayLabel(d){
+  if(!d) return '희망일 미정';
+  var p=d.split('-'), dt=new Date(+p[0],+p[1]-1,+p[2]);
+  var t=OPT.today.split('-'), td=new Date(+t[0],+t[1]-1,+t[2]);
+  var diff=Math.round((dt-td)/86400000);
+  var rel=diff===0?'오늘':(diff>0?'D-'+diff:'D+'+(-diff)+' 지남');
+  return (+p[1])+'/'+(+p[2])+'('+WD[dt.getDay()]+') · '+rel;
+}
 function load(){
-  var q=$('q').value.trim(); $('tbl').innerHTML='<tr><td>불러오는 중…</td></tr>';
-  call('listReservations',[{date:$('qdate').value,q:q}],function(rows){
-    $('listInfo').textContent=(q?'검색 "'+q+'": ':$('qdate').value+' 예약 ')+rows.length+'명';
+  var q=$('q').value.trim(), mode=$('qmode').value; $('tbl').innerHTML='<tr><td>불러오는 중…</td></tr>';
+  call('listReservations',[{mode:mode,q:q}],function(rows){
+    var today=OPT.today, nToday=0, nMiss=0;
+    rows.forEach(function(r){ if(r['희망일']===today) nToday++; if(r['희망일']&&r['희망일']<today&&!r['도착상태']) nMiss++; });
+    $('listInfo').innerHTML='총 <b>'+rows.length+'</b>명'+(q?' · 검색 "'+esc(q)+'"':'')+' · 오늘 <b>'+nToday+'</b>명'+(nMiss?' · <span style="color:var(--bad)">지난 예약 중 도착 미확인 <b>'+nMiss+'</b>명</span>':'');
     if(!rows.length){ $('tbl').innerHTML='<tr><td class="muted" style="padding:20px">해당 예약이 없어요.</td></tr>'; return; }
     var teamCount={}; rows.forEach(function(r){teamCount[r['팀ID']]=(teamCount[r['팀ID']]||0)+1});
-    var h='<tr><th>시간</th><th>환자</th><th>국적/통역</th><th>시술</th><th>유입경로 · 연락처</th><th>SOS</th><th>도착 확인</th></tr>';
+    var h='<tr><th>내원 예정 시간</th><th>환자</th><th>국적/통역</th><th>시술</th><th>유입경로 · 연락처</th><th>SOS</th><th>도착 확인</th></tr>';
+    var lastDay=null, todayRowId='';
     rows.forEach(function(r){
+      var day=r['희망일']||'', isToday=day===today, isPast=day&&day<today;
+      if(day!==lastDay){
+        lastDay=day; var n=rows.filter(function(x){return (x['희망일']||'')===day}).length;
+        if(isToday) todayRowId='todayRow';
+        h+='<tr'+(isToday?' id="todayRow"':'')+'><td colspan="7" style="background:'+(isToday?'#fff4e5':(isPast?'#f1f3f4':'var(--blue2)'))+';font-weight:700;color:'+(isToday?'#8a4b00':'#174ea6')+';padding:8px">'+(day?'내원 예정 ':'')+esc(dayLabel(day))+' <span class="muted" style="font-weight:400">· '+n+'명</span></td></tr>';
+      }
       var team=teamCount[r['팀ID']]>1, sos=r['SOS상태']||'미전송';
       var sc=sos==='전송완료'||sos==='수동등록'?'ok':(sos==='실패'?'bad':'warn');
-      h+='<tr'+(team?' class="team"':'')+'><td>'+esc(r['희망일']!==$('qdate').value&&q?r['희망일']+' ':'')+esc(r['희망시간']||'미정')+'</td>'
-        +'<td><b>'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'</span></td>'
+      var miss=isPast&&!r['도착상태'];
+      h+='<tr'+(team?' class="team"':'')+(isToday?' style="background:#fffaf0"':'')+'><td>'+esc(r['희망시간']||'미정')+'</td>'
+        +'<td><b>'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span></td>'
         +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+'</td>'
         +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
-        +'<td><span class="chip '+sc+'">'+esc(sos)+'</span>'+(sc==='ok'?'':'<br><button class="sec" style="padding:3px 8px;font-size:12px;margin-top:4px" onclick="sendOne(\''+r['접수번호']+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+r['접수번호']+'\');return false">수동등록 표시</a>')+'</td>'
-        +'<td><select onchange="arr(\''+r['접수번호']+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select></td></tr>';
+        +'<td><span class="chip">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(sc==='ok'?'':'<br><button class="sec" style="padding:3px 8px;font-size:12px;margin-top:4px" onclick="sendOne(\''+r['접수번호']+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+r['접수번호']+'\');return false">수동등록 표시</a>')+'</td>'
+        +'<td>'+(miss?'<span class="chip bad">도착 미확인</span><br>':'')+'<select onchange="arr(\''+r['접수번호']+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select><div class="muted" style="font-size:11px;margin-top:6px">실제 내원일</div><input type="date" value="'+esc(r['실제내원일']||'')+'" onchange="visit(\''+r['접수번호']+'\',this.value)"></td></tr>';
     });
     $('tbl').innerHTML=h;
+    var el=document.getElementById('todayRow'); if(el&&!q) el.scrollIntoView({block:'start'});
   });
 }
-function arr(id,v){ call('setArrival',[id,v]); }
+function arr(id,v){ call('setArrival',[id,v],function(){ load(); }); }
+function visit(id,v){ call('setVisitDate',[id,v]); }
 function sendOne(id){ call('sendToSos',[[id]],function(s){ var b=(s.results||[]).filter(function(x){return x.status!=='전송완료'}); if(b.length)alert(b.map(function(x){return x.names.join(', ')+': '+x.status+(x.message?' - '+x.message:'')}).join('\n')); load(); }); }
 function manual(id){ if(!confirm('SOS에 직접 등록하셨나요? 전송 상태를 수동등록으로 표시합니다.'))return; call('markSosManual',[[id]],load); }
 </script>
