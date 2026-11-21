@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOS 예약접수</title>
+<style>
+  :root{--blue:#2b6cff;--blue2:#e8f0fe;--ink:#1b2a41;--mute:#6b7a90;--line:#dbe3ef;--ok:#0f9d58;--warn:#e8710a;--bad:#d93025;--bg:#f5f8fd}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'Noto Sans KR',system-ui,sans-serif}
+  header{background:linear-gradient(90deg,#2b6cff,#4aa3ff);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:16px}
+  header h1{font-size:17px;margin:0}
+  nav{display:flex;gap:6px;margin-left:auto}
+  nav button{background:rgba(255,255,255,.18);color:#fff;border:0;padding:7px 14px;border-radius:18px;cursor:pointer;font-size:13px}
+  nav button.on{background:#fff;color:var(--blue);font-weight:700}
+  main{max-width:1060px;margin:0 auto;padding:18px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+  textarea{width:100%;min-height:150px;border:1px solid var(--line);border-radius:8px;padding:10px;font:13px/1.5 inherit;resize:vertical}
+  input,select{border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;background:#fff;min-width:0}
+  button.pri{background:var(--blue);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer}
+  button.sec{background:#fff;color:var(--blue);border:1px solid var(--blue);border-radius:8px;padding:9px 16px;font-weight:700;cursor:pointer}
+  button:disabled{opacity:.5;cursor:default}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .rec{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fbfdff}
+  .rec h4{margin:0 0 8px;font-size:13px;color:var(--blue)}
+  label{display:block;font-size:11px;color:var(--mute);margin-bottom:2px}
+  .rec input,.rec select{width:100%}
+  .warn{background:#fff4e5;border:1px solid #ffd9a8;color:#8a4b00;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
+  .msg{padding:8px 12px;border-radius:8px;margin-top:10px;font-size:13px}
+  .msg.ok{background:#e6f4ea;color:#0b6b38}.msg.err{background:#fce8e6;color:#a50e0e}.msg.info{background:var(--blue2);color:#174ea6}
+  table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
+  th{background:var(--blue2);text-align:left;padding:8px;font-size:12px;color:#174ea6}
+  td{padding:8px;border-top:1px solid var(--line);vertical-align:top}
+  tr.team td:first-child{border-left:3px solid var(--blue)}
+  .chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--blue2);color:#174ea6}
+  .chip.ok{background:#e6f4ea;color:#0b6b38}.chip.warn{background:#fff4e5;color:#8a4b00}.chip.bad{background:#fce8e6;color:#a50e0e}
+  .hide{display:none !important}
+  .muted{color:var(--mute)}
+  @media(max-width:700px){main{padding:10px}header{flex-wrap:wrap}}
+</style>
+<script>
+/* 독립 실행용: google.script.run 대신 fetch 로 Apps Script 웹앱(doPost)을 부른다 */
+(function(){
+  var URL_='https://script.google.com/macros/s/AKfycbxU0CPFautFqfY2dVWF03khY-XRzn5zJCKLat3iSQ5I-kPSUPTz29hS-y3wK2-iKvX1/exec';
+  function call(fn,args,ok,fail){
+    fetch(URL_,{method:'POST',credentials:'omit',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn:fn,args:args})})
+      .then(function(r){return r.json()})
+      .then(function(j){ if(j.ok){ if(ok) ok(j.data); } else { var e=new Error(j.error||'오류'); if(fail) fail(e); else alert('오류: '+e.message); } })
+      .catch(function(e){ var er=new Error('서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.'); if(fail) fail(er); else alert(er.message); });
+  }
+  function builder(ok,fail){
+    return new Proxy({},{get:function(_,name){
+      if(name==='withSuccessHandler') return function(f){return builder(f,fail)};
+      if(name==='withFailureHandler') return function(f){return builder(ok,f)};
+      return function(){ call(name,[].slice.call(arguments),ok,fail); };
+    }});
+  }
+  window.google={script:{run:builder()}};
+})();
+</script>
+</head>
+<body>
+<div id="lock" class="hide" style="position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;align-items:center;justify-content:center">
+  <div class="card" style="width:min(340px,90vw);text-align:center">
+    <h2 style="margin:0 0 4px;color:var(--blue)">SOS 예약접수</h2>
+    <p class="muted" style="margin:0 0 12px">접속 코드를 입력해 주세요</p>
+    <input id="code" type="password" autocomplete="off" style="width:100%;text-align:center;font-size:16px" onkeydown="if(event.key==='Enter')doLogin()">
+    <button id="lockBtn" class="pri" style="width:100%;margin-top:10px" onclick="doLogin()">입장</button>
+    <div id="lockErr" style="color:var(--bad);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+<header><h1>SOS 예약접수</h1>
+  <nav><button id="t1" class="on" onclick="tab(1)">접수</button><button id="t2" onclick="tab(2)">당일 현황·검색</button></nav>
+</header>
+<main>
+
+<section id="p1">
+  <div class="card">
+    <b>예약툴 내용 붙여넣기</b> <span class="muted">· 여러 명이어도 한 번에 붙여넣으면 됩니다</span>
+    <textarea id="src" placeholder="고객이 보낸 예약 정보를 그대로 붙여넣으세요 (한국어/중국어 양식 모두 가능)"></textarea>
+    <div class="row" style="margin-top:8px"><button class="pri" onclick="doParse()">분석하기</button><button class="sec" onclick="clearAll()">비우기</button></div>
+    <div id="warns"></div>
+  </div>
+
+  <div id="review" class="hide">
+    <div class="card">
+      <b>접수 정보 확인</b> <span class="muted">· 잘못 읽힌 곳은 바로 고치세요</span>
+      <div id="recs" style="margin-top:10px"></div>
+      <div class="grid" style="margin-top:6px">
+        <div><label>유입경로</label><input id="route" list="routes" placeholder="선택 또는 직접 입력"><datalist id="routes"></datalist></div>
+        <div><label>연락처 / 메신저 ID</label><input id="contact" placeholder="LINE·WeChat ID, 전화번호"></div>
+        <div style="grid-column:span 2"><label>메모 (내부용)</label><input id="memo" style="width:100%"></div>
+      </div>
+      <label style="margin-top:10px;font-size:13px;color:var(--ink)"><input type="checkbox" id="group" checked style="width:auto"> 한 팀으로 묶기 (첫 번째가 대표, 나머지는 동행자로 SOS에 등록)</label>
+      <div class="row" style="margin-top:12px">
+        <button class="pri" id="bSos" onclick="save(true)">저장 + SOS로 넘기기</button>
+        <button class="sec" id="bSave" onclick="save(false)">시트에만 저장</button>
+      </div>
+      <div id="saveMsg"></div>
+    </div>
+  </div>
+</section>
+
+<section id="p2" class="hide">
+  <div class="card">
+    <div class="row">
+      <div><label>날짜</label><input type="date" id="qdate" onchange="load()"></div>
+      <div style="flex:1;min-width:200px"><label>검색 (이름·연락처·유입경로)</label><input id="q" style="width:100%" placeholder="입력 후 Enter — 비우면 위 날짜 기준" onkeydown="if(event.key==='Enter')load()"></div>
+      <div style="align-self:flex-end"><button class="pri" onclick="load()">조회</button></div>
+    </div>
+    <div id="listInfo" class="muted" style="margin-top:8px"></div>
+  </div>
+  <div class="card" style="padding:0;overflow:auto"><table id="tbl"></table></div>
+</section>
+
+</main>
+<script>
+var OPT = {routes:[],arrival:[],sosReady:false,today:''}, PARSED = [];
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function tab(n){ $('p1').classList.toggle('hide',n!==1); $('p2').classList.toggle('hide',n!==2); $('t1').classList.toggle('on',n===1); $('t2').classList.toggle('on',n===2); if(n===2)load(); }
+function fail(e){ alert('오류: '+(e&&e.message||e)); }
+function msg(el,cls,t){ $(el).innerHTML='<div class="msg '+cls+'">'+t+'</div>'; }
+
+/* ───── 접속 코드 ───── */
+var TOK='';
+try{ TOK=sessionStorage.getItem('sosTok')||''; }catch(e){}
+function call(fn,args,ok,err){
+  google.script.run.withSuccessHandler(ok||function(){}).withFailureHandler(function(e){
+    if(/로그인이 만료/.test((e&&e.message)||'')){ TOK=''; showLock(); }
+    (err||fail)(e);
+  }).api(TOK,fn,args||[]);
+}
+function showLock(){ $('lock').classList.remove('hide'); $('code').value=''; setTimeout(function(){$('code').focus()},50); }
+function doLogin(){
+  var c=$('code').value; if(!c.trim())return; $('lockBtn').disabled=true; $('lockErr').textContent='';
+  google.script.run.withSuccessHandler(function(t){
+    TOK=t; try{sessionStorage.setItem('sosTok',t)}catch(e){} $('lock').classList.add('hide'); $('lockBtn').disabled=false; init();
+  }).withFailureHandler(function(e){ $('lockBtn').disabled=false; $('lockErr').textContent=(e&&e.message)||'오류'; }).login(c);
+}
+function init(){
+  call('getOptions',[],function(o){
+    OPT=o; $('routes').innerHTML=o.routes.map(function(r){return '<option value="'+esc(r)+'">'}).join(''); $('qdate').value=o.today;
+  });
+}
+if(TOK) init(); else showLock();
+
+function clearAll(){ $('src').value=''; $('review').classList.add('hide'); $('warns').innerHTML=''; $('saveMsg').innerHTML=''; PARSED=[]; }
+
+function doParse(){
+  var t=$('src').value; if(!t.trim()){alert('붙여넣은 내용이 없어요.');return;}
+  call('parseText',[t],function(r){
+    PARSED=r.records; $('saveMsg').innerHTML='';
+    $('warns').innerHTML=r.warnings.map(function(w){return '<div class="warn">⚠ '+esc(w)+'</div>'}).join('');
+    if(!PARSED.length){ $('review').classList.add('hide'); msg('warns','err','예약 정보를 찾지 못했어요. 양식을 확인해 주세요.'); return; }
+    renderRecs(); $('group').checked=PARSED.length>1; $('review').classList.remove('hide');
+  });
+}
+var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역','sel:,O,X']];
+function renderRecs(){
+  $('recs').innerHTML=PARSED.map(function(r,i){
+    var h='<div class="rec"><h4>'+(i===0?'대표':'동행자 '+i)+(r.status?' · '+esc(r.status):'')+'</h4><div class="grid">';
+    FIELDS.forEach(function(f){
+      var k=f[0],ty=f[2]||'text',v=r[k]||'';
+      h+='<div><label>'+f[1]+'</label>';
+      if(ty.indexOf('sel:')===0){ h+='<select onchange="PARSED['+i+'].'+k+'=this.value">'+ty.slice(4).split(',').map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>'; }
+      else h+='<input type="'+ty+'" value="'+esc(v)+'" onchange="PARSED['+i+'].'+k+'=this.value">';
+      h+='</div>';
+    });
+    return h+'</div>'+(r.treatRaw&&r.treatRaw!==r.treat?'<div class="muted" style="margin-top:6px">시술 원문: '+esc(r.treatRaw)+'</div>':'')+'</div>';
+  }).join('');
+}
+function save(toSos){
+  var miss=PARSED.filter(function(r){return !r.name}).length; if(miss){alert('환자명이 비어 있는 건이 있어요.');return;}
+  if(!$('route').value.trim() && !confirm('유입경로가 비어 있어요. 이대로 저장할까요?\n(당일 고객 확인 때 필요해요)')) return;
+  $('bSos').disabled=$('bSave').disabled=true; msg('saveMsg','info','저장 중…');
+  call('saveReservations',[{records:PARSED,route:$('route').value.trim(),contact:$('contact').value.trim(),memo:$('memo').value.trim(),group:$('group').checked}],function(res){
+    if(!toSos){ done(res,null); return; }
+    msg('saveMsg','info','시트 저장 완료. SOS로 넘기는 중…');
+    call('sendToSos',[res.ids],function(s){ done(res,s); },function(e){ done(res,{err:e&&e.message||String(e)}); });
+  },function(e){ $('bSos').disabled=$('bSave').disabled=false; fail(e); });
+}
+function done(res,s){
+  $('bSos').disabled=$('bSave').disabled=false;
+  var t='✓ 시트에 '+res.ids.length+'명 저장됨 ('+res.ids.join(', ')+')';
+  if(!s){ msg('saveMsg','ok',t); }
+  else if(s.err){ msg('saveMsg','err',t+'<br>SOS 전송 실패: '+esc(s.err)); }
+  else {
+    var bad=(s.results||[]).filter(function(x){return x.status!=='전송완료'});
+    if(bad.length) msg('saveMsg','err',t+'<br>SOS: '+bad.map(function(x){return esc(x.names.join(', '))+' → '+esc(x.status)+(x.message?' ('+esc(x.message)+')':'')}).join('<br>')+'<br><span class="muted">당일 현황 탭에서 다시 넘기거나, SOS에 직접 등록 후 [수동등록 표시]를 누르세요.</span>');
+    else msg('saveMsg','ok',t+'<br>✓ SOS로 넘김 완료');
+  }
+  $('src').value=''; $('warns').innerHTML=''; PARSED=[]; $('recs').innerHTML='';
+}
+
+/* ───── 당일 현황 ───── */
+function load(){
+  var q=$('q').value.trim(); $('tbl').innerHTML='<tr><td>불러오는 중…</td></tr>';
+  call('listReservations',[{date:$('qdate').value,q:q}],function(rows){
+    $('listInfo').textContent=(q?'검색 "'+q+'": ':$('qdate').value+' 예약 ')+rows.length+'명';
+    if(!rows.length){ $('tbl').innerHTML='<tr><td class="muted" style="padding:20px">해당 예약이 없어요.</td></tr>'; return; }
+    var teamCount={}; rows.forEach(function(r){teamCount[r['팀ID']]=(teamCount[r['팀ID']]||0)+1});
+    var h='<tr><th>시간</th><th>환자</th><th>국적/통역</th><th>시술</th><th>유입경로 · 연락처</th><th>SOS</th><th>도착 확인</th></tr>';
+    rows.forEach(function(r){
+      var team=teamCount[r['팀ID']]>1, sos=r['SOS상태']||'미전송';
+      var sc=sos==='전송완료'||sos==='수동등록'?'ok':(sos==='실패'?'bad':'warn');
+      h+='<tr'+(team?' class="team"':'')+'><td>'+esc(r['희망일']!==$('qdate').value&&q?r['희망일']+' ':'')+esc(r['희망시간']||'미정')+'</td>'
+        +'<td><b>'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'</span></td>'
+        +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+'</td>'
+        +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
+        +'<td><span class="chip '+sc+'">'+esc(sos)+'</span>'+(sc==='ok'?'':'<br><button class="sec" style="padding:3px 8px;font-size:12px;margin-top:4px" onclick="sendOne(\''+r['접수번호']+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+r['접수번호']+'\');return false">수동등록 표시</a>')+'</td>'
+        +'<td><select onchange="arr(\''+r['접수번호']+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select></td></tr>';
+    });
+    $('tbl').innerHTML=h;
+  });
+}
+function arr(id,v){ call('setArrival',[id,v]); }
+function sendOne(id){ call('sendToSos',[[id]],function(s){ var b=(s.results||[]).filter(function(x){return x.status!=='전송완료'}); if(b.length)alert(b.map(function(x){return x.names.join(', ')+': '+x.status+(x.message?' - '+x.message:'')}).join('\n')); load(); }); }
+function manual(id){ if(!confirm('SOS에 직접 등록하셨나요? 전송 상태를 수동등록으로 표시합니다.'))return; call('markSosManual',[[id]],load); }
+</script>
+</body>
+</html>
