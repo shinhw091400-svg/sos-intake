@@ -36,6 +36,10 @@
   tr.team td:first-child{border-left:3px solid var(--blue)}
   .chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--blue2);color:#174ea6}
   .chip.ok{background:#e6f4ea;color:#0b6b38}.chip.warn{background:#fff4e5;color:#8a4b00}.chip.bad{background:#fce8e6;color:#a50e0e}
+  .a-b{background:#dbeafe;color:#1e40af}.a-r{background:#f3e8ff;color:#6b21a8}
+  tr.acc-b td:first-child{box-shadow:inset 4px 0 0 #3b82f6}tr.acc-r td:first-child{box-shadow:inset 4px 0 0 #a855f7}
+  tr.cx{opacity:.5}tr.cx b.nm{text-decoration:line-through}
+  .mini{padding:2px 8px;font-size:12px;margin-top:4px}
   .hide{display:none !important}
   .muted{color:var(--mute)}
   @media(max-width:700px){main{padding:10px}header{flex-wrap:wrap}}
@@ -106,7 +110,9 @@
 <section id="p2" class="hide">
   <div class="card">
     <div class="row">
+      <div><label>계정</label><select id="qacc" onchange="load()"><option value="">전체 계정</option><option value="본사01">본사01</option><option value="루하01">루하01</option></select></div>
       <div><label>보기</label><select id="qmode" onchange="load()"><option value="all">전체 예약</option><option value="upcoming">오늘 이후</option><option value="past">지난 예약</option></select></div>
+      <div><label>정렬</label><select id="qsort" onchange="load()"><option value="upcoming">다가오는 내원일 순</option><option value="oldest">내원일 오래된 순</option><option value="created">접수 최신순</option></select></div>
       <div style="flex:1;min-width:200px"><label>검색 (이름·연락처·유입경로·시술)</label><input id="q" style="width:100%" placeholder="입력 후 Enter — 비우면 전체" onkeydown="if(event.key==='Enter')load()"></div>
       <div style="align-self:flex-end"><button class="pri" onclick="load()">조회</button> <button class="sec" onclick="syncSos()">SOS 처리상태 새로고침</button></div>
     </div>
@@ -116,6 +122,15 @@
 </section>
 
 </main>
+<div id="editBox" class="hide" style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:center;justify-content:center">
+  <div class="card" style="width:min(560px,94vw);max-height:90vh;overflow:auto;margin:0">
+    <h3 id="editTitle" style="margin:0 0 4px"></h3>
+    <p id="editNote" class="muted" style="margin:0 0 10px;font-size:12px"></p>
+    <div class="grid" id="editGrid"></div>
+    <div class="row" style="margin-top:12px"><button class="pri" id="editSave" onclick="saveEdit()">저장</button><button class="sec" onclick="closeEdit()">닫기</button></div>
+    <div id="editMsg"></div>
+  </div>
+</div>
 <script>
 var OPT = {routes:[],arrival:[],sosReady:false,today:''}, PARSED = [];
 function $(i){return document.getElementById(i)}
@@ -206,36 +221,80 @@ function dayLabel(d){
   var rel=diff===0?'오늘':(diff>0?'D-'+diff:'D+'+(-diff)+' 지남');
   return (+p[1])+'/'+(+p[2])+'('+WD[dt.getDay()]+') · '+rel;
 }
+var ROWS={};
+function acls(r){ return (r['SOS계정']||'')==='루하01'?'r':'b'; }
 function load(){
-  var q=$('q').value.trim(), mode=$('qmode').value; $('tbl').innerHTML='<tr><td>불러오는 중…</td></tr>';
-  call('listReservations',[{mode:mode,q:q}],function(rows){
-    var today=OPT.today, nToday=0, nMiss=0;
-    rows.forEach(function(r){ if(r['희망일']===today) nToday++; if(r['희망일']&&r['희망일']<today&&!r['도착상태']) nMiss++; });
-    $('listInfo').innerHTML='총 <b>'+rows.length+'</b>명'+(q?' · 검색 "'+esc(q)+'"':'')+' · 오늘 <b>'+nToday+'</b>명'+(nMiss?' · <span style="color:var(--bad)">지난 예약 중 도착 미확인 <b>'+nMiss+'</b>명</span>':'');
+  var q=$('q').value.trim(), mode=$('qmode').value, acc=$('qacc').value, sort=$('qsort').value;
+  $('tbl').innerHTML='<tr><td>불러오는 중…</td></tr>';
+  call('listReservations',[{mode:mode,q:q,account:acc,sort:sort}],function(rows){
+    ROWS={}; rows.forEach(function(r){ROWS[r['접수번호']]=r;});
+    var today=OPT.today, nToday=0, nMiss=0, nB=0, nR=0;
+    rows.forEach(function(r){
+      if(r['도착상태']==='취소') return;
+      if(acls(r)==='r') nR++; else nB++;
+      if(r['희망일']===today) nToday++;
+      if(r['희망일']&&r['희망일']<today&&!r['도착상태']) nMiss++;
+    });
+    $('listInfo').innerHTML='총 <b>'+rows.length+'</b>건'+(q?' · 검색 "'+esc(q)+'"':'')
+      +' · <span class="chip a-b">본사01 '+nB+'명</span> <span class="chip a-r">루하01 '+nR+'명</span>'
+      +' · 오늘 <b>'+nToday+'</b>명'+(nMiss?' · <span style="color:var(--bad)">지난 예약 중 도착 미확인 <b>'+nMiss+'</b>명</span>':'');
     if(!rows.length){ $('tbl').innerHTML='<tr><td class="muted" style="padding:20px">해당 예약이 없어요.</td></tr>'; return; }
+    var byDay=sort!=='created';
     var teamCount={}; rows.forEach(function(r){teamCount[r['팀ID']]=(teamCount[r['팀ID']]||0)+1});
     var h='<tr><th>내원 예정 시간</th><th>환자</th><th>국적/통역</th><th>시술</th><th>유입경로 · 연락처</th><th>SOS</th><th>도착 확인</th></tr>';
-    var lastDay=null, todayRowId='';
+    var lastDay=null;
     rows.forEach(function(r){
-      var day=r['희망일']||'', isToday=day===today, isPast=day&&day<today;
-      if(day!==lastDay){
+      var id=r['접수번호'], day=r['희망일']||'', isToday=day===today, isPast=day&&day<today, canceled=r['도착상태']==='취소';
+      if(byDay&&day!==lastDay){
         lastDay=day; var n=rows.filter(function(x){return (x['희망일']||'')===day}).length;
-        if(isToday) todayRowId='todayRow';
-        h+='<tr'+(isToday?' id="todayRow"':'')+'><td colspan="7" style="background:'+(isToday?'#fff4e5':(isPast?'#f1f3f4':'var(--blue2)'))+';font-weight:700;color:'+(isToday?'#8a4b00':'#174ea6')+';padding:8px">'+(day?'내원 예정 ':'')+esc(dayLabel(day))+' <span class="muted" style="font-weight:400">· '+n+'명</span></td></tr>';
+        h+='<tr'+(isToday?' id="todayRow"':'')+'><td colspan="7" style="background:'+(isToday?'#fff4e5':(isPast?'#f1f3f4':'var(--blue2)'))+';font-weight:700;color:'+(isToday?'#8a4b00':'#174ea6')+';padding:8px">'+(day?'내원 예정 ':'')+esc(dayLabel(day))+' <span class="muted" style="font-weight:400">· '+n+'건</span></td></tr>';
       }
-      var team=teamCount[r['팀ID']]>1, sos=r['SOS상태']||'미전송';
+      var team=teamCount[r['팀ID']]>1, sos=r['SOS상태']||'미전송', ac=acls(r);
       var sc=sos==='전송완료'||sos==='수동등록'?'ok':(sos==='실패'?'bad':'warn');
       var miss=isPast&&!r['도착상태'];
-      h+='<tr'+(team?' class="team"':'')+(isToday?' style="background:#fffaf0"':'')+'><td>'+esc(r['희망시간']||'미정')+'</td>'
-        +'<td><b>'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span></td>'
+      var btns=canceled?'<br><span class="chip bad">취소됨</span>':('<br><button class="sec mini" onclick="openEdit(\''+id+'\')">수정</button>'+(r['구분']==='대표'?' <button class="sec mini" style="color:var(--bad);border-color:var(--bad)" onclick="cancelRes(\''+id+'\')">'+(team?'팀 전체 취소':'취소')+'</button>':''));
+      h+='<tr class="acc-'+ac+(team?' team':'')+(canceled?' cx':'')+'"'+(isToday&&!canceled?' style="background:#fffaf0"':'')+'><td>'+esc(r['희망시간']||'미정')+(byDay?'':'<br><span class="muted">'+esc(day)+'</span>')+'</td>'
+        +'<td><b class="nm">'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span>'+btns+'</td>'
         +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+'</td>'
         +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
-        +'<td><span class="chip">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리'])+'</span>':'')+(sc==='ok'?'':'<br><button class="sec" style="padding:3px 8px;font-size:12px;margin-top:4px" onclick="sendOne(\''+r['접수번호']+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+r['접수번호']+'\');return false">수동등록 표시</a>')+'</td>'
-        +'<td>'+(miss?'<span class="chip bad">도착 미확인</span><br>':'')+'<select onchange="arr(\''+r['접수번호']+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select><div class="muted" style="font-size:11px;margin-top:6px">실제 내원일</div><input type="date" value="'+esc(r['실제내원일']||'')+'" onchange="visit(\''+r['접수번호']+'\',this.value)"></td></tr>';
+        +'<td><span class="chip a-'+ac+'">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리'])+'</span>':'')+((sc==='ok'||canceled)?'':'<br><button class="sec mini" onclick="sendOne(\''+id+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+id+'\');return false">수동등록 표시</a>')+'</td>'
+        +'<td>'+(miss?'<span class="chip bad">도착 미확인</span><br>':'')+'<select onchange="arr(\''+id+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select><div class="muted" style="font-size:11px;margin-top:6px">실제 내원일</div><input type="date" value="'+esc(r['실제내원일']||'')+'" onchange="visit(\''+id+'\',this.value)"></td></tr>';
     });
     $('tbl').innerHTML=h;
-    var el=document.getElementById('todayRow'); if(el&&!q) el.scrollIntoView({block:'start'});
+    var el=document.getElementById('todayRow'); if(el&&!q&&sort==='oldest') el.scrollIntoView({block:'start'});
   });
+}
+/* ───── 수정 / 취소 ───── */
+var EF=[['환자명','text'],['생년월일','date'],['국적','text'],['성별','sel:,여,남'],['희망일','date'],['희망시간','time'],['희망시술','text'],['통역','sel:,O,X'],['메모','text'],['유입경로','text'],['연락처','text']];
+var EDIT_ID='';
+function openEdit(id){
+  var r=ROWS[id]; if(!r) return; EDIT_ID=id;
+  $('editTitle').textContent='예약 수정 · '+r['환자명']+' ('+r['구분']+')';
+  $('editNote').textContent=(r['SOS상태']==='전송완료')?'SOS로 이미 보낸 예약이에요. 저장하면 SOS에도 수정이 반영돼요. (병원이 확인한 뒤에는 수정 요청으로 처리될 수 있어요)':'아직 SOS로 보내지 않은 예약이에요. 저장하면 시트만 바뀌고, 나중에 [SOS로 넘기기] 할 때 수정된 내용이 갑니다.';
+  $('editGrid').innerHTML=EF.map(function(f){
+    var v=r[f[0]]||'', ty=f[1], c='<div><label>'+f[0]+'</label>';
+    if(ty.indexOf('sel:')===0) c+='<select data-k="'+f[0]+'">'+ty.slice(4).split(',').map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>';
+    else c+='<input data-k="'+f[0]+'" type="'+ty+'" value="'+esc(v)+'" style="width:100%">';
+    return c+'</div>';
+  }).join('');
+  $('editMsg').innerHTML=''; $('editBox').classList.remove('hide');
+}
+function closeEdit(){ $('editBox').classList.add('hide'); }
+function saveEdit(){
+  var f={}; [].forEach.call(document.querySelectorAll('#editGrid [data-k]'),function(e){ f[e.getAttribute('data-k')]=e.value; });
+  if(!f['환자명'].trim()){ alert('환자명이 비어 있어요.'); return; }
+  $('editSave').disabled=true; msg('editMsg','info','저장 중…');
+  call('updateReservation',[EDIT_ID,f],function(res){
+    $('editSave').disabled=false; closeEdit();
+    alert('저장했어요.\nSOS: '+res.sos.status+(res.sos.message?'\n'+res.sos.message:'')); load();
+  },function(e){ $('editSave').disabled=false; msg('editMsg','err',esc((e&&e.message)||e)); });
+}
+function cancelRes(id){
+  var r=ROWS[id]; if(!r) return;
+  var reason=prompt('"'+r['환자명']+'" 예약을 취소합니다. 취소 사유를 적어 주세요. (SOS에도 함께 전달돼요)','고객 요청');
+  if(reason===null) return;
+  if(!confirm('정말 취소할까요?\n'+r['환자명']+(r['SOS상태']==='전송완료'?'\nSOS에도 취소가 전달됩니다.':'')+'\n(같은 팀 동행자도 함께 취소됩니다)')) return;
+  call('cancelReservation',[id,reason],function(res){ alert('취소했어요.\nSOS: '+res.sos.status+(res.sos.message?'\n'+res.sos.message:'')); load(); });
 }
 function arr(id,v){ call('setArrival',[id,v],function(){ load(); }); }
 function visit(id,v){ call('setVisitDate',[id,v]); }
