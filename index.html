@@ -40,6 +40,9 @@
   tr.acc-b td:first-child{box-shadow:inset 4px 0 0 #3b82f6}tr.acc-r td:first-child{box-shadow:inset 4px 0 0 #a855f7}
   tr.cx{opacity:.5}tr.cx b.nm{text-decoration:line-through}
   .mini{padding:2px 8px;font-size:12px;margin-top:4px}
+  .cb{border:2px solid transparent;cursor:pointer;font:inherit;font-size:13px;padding:3px 12px;border-radius:14px}
+  .cb.on{border-color:currentColor;font-weight:700}
+  .cb.a-all{background:#eef2f7;color:#334155}
   .hide{display:none !important}
   .muted{color:var(--mute)}
   @media(max-width:700px){main{padding:10px}header{flex-wrap:wrap}}
@@ -222,21 +225,23 @@ function dayLabel(d){
   return (+p[1])+'/'+(+p[2])+'('+WD[dt.getDay()]+') · '+rel;
 }
 var ROWS={};
+function setAcc(a){ $('qacc').value=a; load(); }
 function acls(r){ return (r['SOS계정']||'')==='루하01'?'r':'b'; }
 function load(){
   var q=$('q').value.trim(), mode=$('qmode').value, acc=$('qacc').value, sort=$('qsort').value;
   $('tbl').innerHTML='<tr><td>불러오는 중…</td></tr>';
-  call('listReservations',[{mode:mode,q:q,account:acc,sort:sort}],function(rows){
+  call('listReservations',[{mode:mode,q:q,sort:sort}],function(allRows){
+    var rows=acc?allRows.filter(function(r){return (acc==='루하01')===(acls(r)==='r')}):allRows;
     ROWS={}; rows.forEach(function(r){ROWS[r['접수번호']]=r;});
     var today=OPT.today, nToday=0, nMiss=0, nB=0, nR=0;
     rows.forEach(function(r){
       if(r['도착상태']==='취소') return;
-      if(acls(r)==='r') nR++; else nB++;
       if(r['희망일']===today) nToday++;
       if(r['희망일']&&r['희망일']<today&&!r['도착상태']) nMiss++;
     });
+    allRows.forEach(function(r){ if(r['도착상태']==='취소') return; if(acls(r)==='r') nR++; else nB++; });
     $('listInfo').innerHTML='총 <b>'+rows.length+'</b>건'+(q?' · 검색 "'+esc(q)+'"':'')
-      +' · <span class="chip a-b">본사01 '+nB+'명</span> <span class="chip a-r">루하01 '+nR+'명</span>'
+      +' · <button class="cb a-all'+(acc===''?' on':'')+'" onclick="setAcc(\'\')">전체 '+(nB+nR)+'명</button> <button class="cb a-b'+(acc==='본사01'?' on':'')+'" onclick="setAcc(\''+(acc==='본사01'?'':'본사01')+'\')">본사01 '+nB+'명</button> <button class="cb a-r'+(acc==='루하01'?' on':'')+'" onclick="setAcc(\''+(acc==='루하01'?'':'루하01')+'\')">루하01 '+nR+'명</button>'
       +' · 오늘 <b>'+nToday+'</b>명'+(nMiss?' · <span style="color:var(--bad)">지난 예약 중 도착 미확인 <b>'+nMiss+'</b>명</span>':'');
     if(!rows.length){ $('tbl').innerHTML='<tr><td class="muted" style="padding:20px">해당 예약이 없어요.</td></tr>'; return; }
     var byDay=sort!=='created';
