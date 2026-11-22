@@ -126,10 +126,10 @@ function msg(el,cls,t){ $(el).innerHTML='<div class="msg '+cls+'">'+t+'</div>'; 
 
 /* ───── 접속 코드 ───── */
 var TOK='';
-try{ TOK=sessionStorage.getItem('sosTok')||''; }catch(e){}
+try{ TOK=localStorage.getItem('sosTok')||''; var tp=TOK.split('.'); if(!(Number(tp[0])>Date.now())) TOK=''; }catch(e){}
 function call(fn,args,ok,err){
   google.script.run.withSuccessHandler(ok||function(){}).withFailureHandler(function(e){
-    if(/로그인이 만료/.test((e&&e.message)||'')){ TOK=''; showLock(); }
+    if(/로그인이 만료/.test((e&&e.message)||'')){ TOK=''; try{localStorage.removeItem('sosTok')}catch(x){} showLock(); }
     (err||fail)(e);
   }).api(TOK,fn,args||[]);
 }
@@ -137,7 +137,7 @@ function showLock(){ $('lock').classList.remove('hide'); $('code').value=''; set
 function doLogin(){
   var c=$('code').value; if(!c.trim())return; $('lockBtn').disabled=true; $('lockErr').textContent='';
   google.script.run.withSuccessHandler(function(t){
-    TOK=t; try{sessionStorage.setItem('sosTok',t)}catch(e){} $('lock').classList.add('hide'); $('lockBtn').disabled=false; init();
+    TOK=t; try{localStorage.setItem('sosTok',t)}catch(e){} $('lock').classList.add('hide'); $('lockBtn').disabled=false; init();
   }).withFailureHandler(function(e){ $('lockBtn').disabled=false; $('lockErr').textContent=(e&&e.message)||'오류'; }).login(c);
 }
 function init(){
