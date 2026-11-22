@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>예약이</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id%3D'g'%20x1%3D'0'%20y1%3D'0'%20x2%3D'1'%20y2%3D'1'%3E%3Cstop%20offset%3D'0'%20stop-color%3D'%232f8bff'%2F%3E%3Cstop%20offset%3D'1'%20stop-color%3D'%230a3fd6'%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D'32'%20cy%3D'32'%20r%3D'32'%20fill%3D'url(%23g)'%2F%3E%3Ctext%20x%3D'32'%20y%3D'42'%20text-anchor%3D'middle'%20font-family%3D'Malgun%20Gothic%2CApple%20SD%20Gothic%20Neo%2CNoto%20Sans%20KR%2Csans-serif'%20font-weight%3D'800'%20font-size%3D'27'%20fill%3D'%23fff'%3E%EC%98%88%EC%95%BD%3C%2Ftext%3E%3C%2Fsvg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id%3D'g'%20x1%3D'0'%20y1%3D'0'%20x2%3D'1'%20y2%3D'1'%3E%3Cstop%20offset%3D'0'%20stop-color%3D'%2314cfc8'%2F%3E%3Cstop%20offset%3D'1'%20stop-color%3D'%230a9d98'%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D'32'%20cy%3D'32'%20r%3D'32'%20fill%3D'url(%23g)'%2F%3E%3Ctext%20x%3D'32'%20y%3D'42'%20text-anchor%3D'middle'%20font-family%3D'Malgun%20Gothic%2CApple%20SD%20Gothic%20Neo%2CNoto%20Sans%20KR%2Csans-serif'%20font-weight%3D'800'%20font-size%3D'27'%20fill%3D'%23fff'%3E%EC%98%88%EC%95%BD%3C%2Ftext%3E%3C%2Fsvg%3E">
 <style>
-  :root{--blue:#2b6cff;--blue2:#e8f0fe;--ink:#1b2a41;--mute:#6b7a90;--line:#dbe3ef;--ok:#0f9d58;--warn:#e8710a;--bad:#d93025;--bg:#f5f8fd}
+  :root{--blue:#0a9d98;--blue2:#dff6f4;--ink:#1b2a41;--mute:#6b7a90;--line:#dbe3ef;--ok:#0f9d58;--warn:#e8710a;--bad:#d93025;--bg:#f5f8fd}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 'Noto Sans KR',system-ui,sans-serif}
-  header{background:linear-gradient(90deg,#2b6cff,#4aa3ff);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:16px}
+  header{background:linear-gradient(90deg,#0aaaa5,#4cc9c2);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:16px}
   header h1{font-size:17px;margin:0}
   nav{display:flex;gap:6px;margin-left:auto}
   nav button{background:rgba(255,255,255,.18);color:#fff;border:0;padding:7px 14px;border-radius:18px;cursor:pointer;font-size:13px}
@@ -30,12 +30,12 @@
   .rec input,.rec select{width:100%}
   .warn{background:#fff4e5;border:1px solid #ffd9a8;color:#8a4b00;border-radius:8px;padding:8px 12px;margin:8px 0;font-size:13px}
   .msg{padding:8px 12px;border-radius:8px;margin-top:10px;font-size:13px}
-  .msg.ok{background:#e6f4ea;color:#0b6b38}.msg.err{background:#fce8e6;color:#a50e0e}.msg.info{background:var(--blue2);color:#174ea6}
+  .msg.ok{background:#e6f4ea;color:#0b6b38}.msg.err{background:#fce8e6;color:#a50e0e}.msg.info{background:var(--blue2);color:#0b6663}
   table{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
-  th{background:var(--blue2);text-align:left;padding:8px;font-size:12px;color:#174ea6}
+  th{background:var(--blue2);text-align:left;padding:8px;font-size:12px;color:#0b6663}
   td{padding:8px;border-top:1px solid var(--line);vertical-align:top}
   tr.team td:first-child{border-left:3px solid var(--blue)}
-  .chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--blue2);color:#174ea6}
+  .chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:var(--blue2);color:#0b6663}
   .chip.ok{background:#e6f4ea;color:#0b6b38}.chip.warn{background:#fff4e5;color:#8a4b00}.chip.bad{background:#fce8e6;color:#a50e0e}
   .a-b{background:#dbeafe;color:#1e40af}.a-r{background:#f3e8ff;color:#6b21a8}
   tr.acc-b td:first-child{box-shadow:inset 4px 0 0 #3b82f6}tr.acc-r td:first-child{box-shadow:inset 4px 0 0 #a855f7}
@@ -261,7 +261,7 @@ function load(){
       var id=r['접수번호'], day=r['희망일']||'', isToday=day===today, isPast=day&&day<today, canceled=r['도착상태']==='취소';
       if(byDay&&day!==lastDay){
         lastDay=day; var n=rows.filter(function(x){return (x['희망일']||'')===day}).length;
-        h+='<tr'+(isToday?' id="todayRow"':'')+'><td colspan="7" style="background:'+(isToday?'#fff4e5':(isPast?'#f1f3f4':'var(--blue2)'))+';font-weight:700;color:'+(isToday?'#8a4b00':'#174ea6')+';padding:8px">'+(day?'내원 예정 ':'')+esc(dayLabel(day))+' <span class="muted" style="font-weight:400">· '+n+'건</span></td></tr>';
+        h+='<tr'+(isToday?' id="todayRow"':'')+'><td colspan="7" style="background:'+(isToday?'#fff4e5':(isPast?'#f1f3f4':'var(--blue2)'))+';font-weight:700;color:'+(isToday?'#8a4b00':'#0b6663')+';padding:8px">'+(day?'내원 예정 ':'')+esc(dayLabel(day))+' <span class="muted" style="font-weight:400">· '+n+'건</span></td></tr>';
       }
       var team=teamCount[r['팀ID']]>1, sos=r['SOS상태']||'미전송', ac=acls(r);
       var sc=sos==='전송완료'||sos==='수동등록'?'ok':(sos==='실패'?'bad':'warn');
