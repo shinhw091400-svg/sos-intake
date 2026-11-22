@@ -108,7 +108,7 @@
     <div class="row">
       <div><label>보기</label><select id="qmode" onchange="load()"><option value="all">전체 예약</option><option value="upcoming">오늘 이후</option><option value="past">지난 예약</option></select></div>
       <div style="flex:1;min-width:200px"><label>검색 (이름·연락처·유입경로·시술)</label><input id="q" style="width:100%" placeholder="입력 후 Enter — 비우면 전체" onkeydown="if(event.key==='Enter')load()"></div>
-      <div style="align-self:flex-end"><button class="pri" onclick="load()">조회</button></div>
+      <div style="align-self:flex-end"><button class="pri" onclick="load()">조회</button> <button class="sec" onclick="syncSos()">SOS 처리상태 새로고침</button></div>
     </div>
     <div id="listInfo" class="muted" style="margin-top:8px"></div>
   </div>
@@ -230,7 +230,7 @@ function load(){
         +'<td><b>'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span></td>'
         +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+'</td>'
         +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
-        +'<td><span class="chip">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(sc==='ok'?'':'<br><button class="sec" style="padding:3px 8px;font-size:12px;margin-top:4px" onclick="sendOne(\''+r['접수번호']+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+r['접수번호']+'\');return false">수동등록 표시</a>')+'</td>'
+        +'<td><span class="chip">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리'])+'</span>':'')+(sc==='ok'?'':'<br><button class="sec" style="padding:3px 8px;font-size:12px;margin-top:4px" onclick="sendOne(\''+r['접수번호']+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+r['접수번호']+'\');return false">수동등록 표시</a>')+'</td>'
         +'<td>'+(miss?'<span class="chip bad">도착 미확인</span><br>':'')+'<select onchange="arr(\''+r['접수번호']+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select><div class="muted" style="font-size:11px;margin-top:6px">실제 내원일</div><input type="date" value="'+esc(r['실제내원일']||'')+'" onchange="visit(\''+r['접수번호']+'\',this.value)"></td></tr>';
     });
     $('tbl').innerHTML=h;
@@ -239,6 +239,7 @@ function load(){
 }
 function arr(id,v){ call('setArrival',[id,v],function(){ load(); }); }
 function visit(id,v){ call('setVisitDate',[id,v]); }
+function syncSos(){ $('listInfo').textContent='SOS에서 병원 처리 상태를 가져오는 중…'; call('syncSos',[],function(n){ load(); }); }
 function sendOne(id){ call('sendToSos',[[id]],function(s){ var b=(s.results||[]).filter(function(x){return x.status!=='전송완료'}); if(b.length)alert(b.map(function(x){return x.names.join(', ')+': '+x.status+(x.message?' - '+x.message:'')}).join('\n')); load(); }); }
 function manual(id){ if(!confirm('SOS에 직접 등록하셨나요? 전송 상태를 수동등록으로 표시합니다.'))return; call('markSosManual',[[id]],load); }
 </script>
