@@ -87,7 +87,7 @@
   <div class="card">
     <b>예약툴 내용 붙여넣기</b> <span class="muted">· 여러 명이어도 한 번에 붙여넣으면 됩니다</span>
     <textarea id="src" placeholder="고객이 보낸 예약 정보를 그대로 붙여넣으세요 (한국어/중국어 양식 모두 가능)"></textarea>
-    <div class="row" style="margin-top:8px"><button class="pri" onclick="doParse()">분석하기</button><button class="sec" onclick="clearAll()">비우기</button></div>
+    <div class="row" style="margin-top:8px"><button class="pri" onclick="doParse()">예약 보내기</button><button class="sec" onclick="clearAll()">비우기</button></div>
     <div id="warns"></div>
   </div>
 
@@ -175,6 +175,11 @@ function doParse(){
     $('warns').innerHTML=r.warnings.map(function(w){return '<div class="warn">⚠ '+esc(w)+'</div>'}).join('');
     if(!PARSED.length){ $('review').classList.add('hide'); msg('warns','err','예약 정보를 찾지 못했어요. 양식을 확인해 주세요.'); return; }
     renderRecs(); $('group').checked=PARSED.length>1; $('review').classList.remove('hide');
+    if(!$('route').value.trim()) $('route').value=(PARSED[0].route||'').replace(/\s*\([A-Za-z ]+\)\s*$/,'');
+    if(!$('contact').value.trim()) $('contact').value=PARSED[0].contact||'';
+    var ok=PARSED.every(function(x){return x.name&&x.wishDate});
+    if(ok && $('route').value.trim()){ save(true); }
+    else msg('warns','err','빠진 정보가 있어요(환자명·희망일·유입경로). 아래에서 채운 뒤 [저장 + SOS로 넘기기]를 눌러 주세요.');
   });
 }
 var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
@@ -211,7 +216,7 @@ function done(res,s){
     if(bad.length) msg('saveMsg','err',t+'<br>SOS: '+bad.map(function(x){return esc(x.names.join(', '))+' → '+esc(x.status)+(x.message?' ('+esc(x.message)+')':'')}).join('<br>')+'<br><span class="muted">전체 예약 현황 탭에서 다시 넘기거나, SOS에 직접 등록 후 [수동등록 표시]를 누르세요.</span>');
     else msg('saveMsg','ok',t+'<br>✓ SOS로 넘김 완료');
   }
-  $('src').value=''; $('warns').innerHTML=''; PARSED=[]; $('recs').innerHTML='';
+  $('src').value=''; $('warns').innerHTML=''; PARSED=[]; $('recs').innerHTML=''; $('route').value=''; $('contact').value='';
 }
 
 /* ───── 전체 예약 현황 ───── */
