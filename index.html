@@ -43,6 +43,7 @@
   .cb{border:2px solid transparent;cursor:pointer;font:inherit;font-size:13px;padding:3px 12px;border-radius:14px}
   .cb.on{border-color:currentColor;font-weight:700}
   .cb.a-all{background:#eef2f7;color:#334155}
+  select.need{border:2px solid #dc2626;background:#fef2f2}
   .hide{display:none !important}
   .muted{color:var(--mute)}
   @media(max-width:700px){main{padding:10px}header{flex-wrap:wrap}}
@@ -182,14 +183,14 @@ function doParse(){
     $('review').scrollIntoView({behavior:'smooth'});
   });
 }
-var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
+var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역 필요? (필수)','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
 function renderRecs(){
   $('recs').innerHTML=PARSED.map(function(r,i){
     var h='<div class="rec"><h4>'+(i===0?'대표':'동행자 '+i)+(r.status?' · '+esc(r.status):'')+(r.sosAccount?' · SOS '+esc(r.sosAccount):'')+'</h4><div class="grid">';
     FIELDS.forEach(function(f){
       var k=f[0],ty=f[2]||'text',v=r[k]||'';
       h+='<div><label>'+f[1]+'</label>';
-      if(ty.indexOf('sel:')===0){ h+='<select onchange="PARSED['+i+'].'+k+'=this.value">'+ty.slice(4).split(',').map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>'; }
+      if(ty.indexOf('sel:')===0){ var need=(k==='interp'&&v!=='O'&&v!=='X'); h+='<select'+(need?' class="need"':'')+' onchange="PARSED['+i+'].'+k+'=this.value;this.classList.toggle(\'need\',this.value!==\'O\'&&this.value!==\'X\')">'+ty.slice(4).split(',').map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>'; }
       else h+='<input type="'+ty+'" value="'+esc(v)+'" onchange="PARSED['+i+'].'+k+'=this.value">';
       h+='</div>';
     });
@@ -197,6 +198,8 @@ function renderRecs(){
   }).join('');
 }
 function save(toSos){
+  var noI=PARSED.filter(function(r){return r.interp!=='O'&&r.interp!=='X'}).length;
+  if(toSos&&noI){ alert('통역 여부(O/X)를 모든 고객에 선택해 주세요.'); var s=document.querySelector('#recs select.need'); if(s){s.scrollIntoView({block:'center'}); s.focus();} return; }
   var miss=PARSED.filter(function(r){return !r.name}).length; if(miss){alert('환자명이 비어 있는 건이 있어요.');return;}
   if(!$('route').value.trim() && !confirm('유입경로가 비어 있어요. 이대로 저장할까요?\n(당일 고객 확인 때 필요해요)')) return;
   $('bSos').disabled=$('bSave').disabled=true; msg('saveMsg','info','저장 중…');
