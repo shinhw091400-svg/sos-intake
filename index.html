@@ -4,7 +4,8 @@
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>세라미크명동 예약고객관리 x SOS</title>
+<title>예약이</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2064%2064'%3E%3Cdefs%3E%3ClinearGradient%20id%3D'g'%20x1%3D'0'%20y1%3D'0'%20x2%3D'1'%20y2%3D'1'%3E%3Cstop%20offset%3D'0'%20stop-color%3D'%232f8bff'%2F%3E%3Cstop%20offset%3D'1'%20stop-color%3D'%230a3fd6'%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Ccircle%20cx%3D'32'%20cy%3D'32'%20r%3D'32'%20fill%3D'url(%23g)'%2F%3E%3Ctext%20x%3D'32'%20y%3D'42'%20text-anchor%3D'middle'%20font-family%3D'Malgun%20Gothic%2CApple%20SD%20Gothic%20Neo%2CNoto%20Sans%20KR%2Csans-serif'%20font-weight%3D'800'%20font-size%3D'27'%20fill%3D'%23fff'%3E%EC%98%88%EC%95%BD%3C%2Ftext%3E%3C%2Fsvg%3E">
 <style>
   :root{--blue:#2b6cff;--blue2:#e8f0fe;--ink:#1b2a41;--mute:#6b7a90;--line:#dbe3ef;--ok:#0f9d58;--warn:#e8710a;--bad:#d93025;--bg:#f5f8fd}
   *{box-sizing:border-box}
@@ -72,14 +73,14 @@
 <body>
 <div id="lock" class="hide" style="position:fixed;inset:0;background:var(--bg);z-index:10;display:flex;align-items:center;justify-content:center">
   <div class="card" style="width:min(340px,90vw);text-align:center">
-    <h2 style="margin:0 0 4px;color:var(--blue);font-size:18px">세라미크명동 예약고객관리 x SOS</h2>
+    <h2 style="margin:0 0 4px;color:var(--blue);font-size:20px">예약이</h2>
     <p class="muted" style="margin:0 0 12px">접속 코드를 입력해 주세요</p>
     <input id="code" type="password" autocomplete="off" style="width:100%;text-align:center;font-size:16px" onkeydown="if(event.key==='Enter')doLogin()">
     <button id="lockBtn" class="pri" style="width:100%;margin-top:10px" onclick="doLogin()">입장</button>
     <div id="lockErr" style="color:var(--bad);font-size:13px;margin-top:8px"></div>
   </div>
 </div>
-<header><h1>세라미크명동 예약고객관리 x SOS</h1>
+<header><h1>예약이</h1>
   <nav><button id="t1" class="on" onclick="tab(1)">접수</button><button id="t2" onclick="tab(2)">전체 예약 현황</button></nav>
 </header>
 <main>
