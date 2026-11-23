@@ -151,7 +151,8 @@
 var OPT = {routes:[],arrival:[],sosReady:false,today:''}, PARSED = [];
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function tab(n){ $('p1').classList.toggle('hide',n!==1); $('p2').classList.toggle('hide',n!==2); $('t1').classList.toggle('on',n===1); $('t2').classList.toggle('on',n===2); if(n===2)load(); }
+var LASTSYNC=0;
+function tab(n){ $('p1').classList.toggle('hide',n!==1); $('p2').classList.toggle('hide',n!==2); $('t1').classList.toggle('on',n===1); $('t2').classList.toggle('on',n===2); if(n===2){ if(Date.now()-LASTSYNC>120000){ LASTSYNC=Date.now(); syncSos(); } else load(); } }
 function fail(e){ alert('오류: '+(e&&e.message||e)); }
 function msg(el,cls,t){ $(el).innerHTML='<div class="msg '+cls+'">'+t+'</div>'; }
 
@@ -317,7 +318,7 @@ function load(){
         +'<td><b class="nm">'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span>'+btns+'</td>'
         +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+(r['시술원문']&&r['시술원문']!==r['희망시술']?'<br><span class="muted" style="font-size:11px">원문: '+esc(r['시술원문'])+'</span>':'')+'</td>'
         +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
-        +'<td><span class="chip a-'+ac+'">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리'])+'</span>':'')+((sc==='ok'||canceled)?'':'<br><button class="sec mini" onclick="sendOne(\''+id+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+id+'\');return false">수동등록 표시</a>')+'</td>'
+        +'<td><span class="chip a-'+ac+'">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리']==='병원 완료'?'병원 확정 완료':r['병원처리'])+'</span>'+(r['병원확정']?'<div class="muted" style="font-size:11px">확정 '+esc(r['병원확정'])+(r['희망일']&&String(r['병원확정']).slice(0,10)!==r['희망일']?' <b style="color:var(--bad)">(희망일과 다름)</b>':'')+'</div>':''):'')+((sc==='ok'||canceled)?'':'<br><button class="sec mini" onclick="sendOne(\''+id+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+id+'\');return false">수동등록 표시</a>')+'</td>'
         +'<td>'+(miss?'<span class="chip bad">내원 미확인</span><br>':'')+(canceled?'<span class="chip bad">취소됨</span>':'<label class="vchk"><input type="checkbox"'+(r['도착상태']==='도착'?' checked':'')+' onchange="arr(\''+id+'\',this.checked?\'도착\':\'\')"> 내원함</label>'+(r['도착상태']&&r['도착상태']!=='도착'?'<span class="chip warn">'+esc(r['도착상태'])+'</span>':'')+(r['실제내원일']&&r['도착상태']==='도착'?'<div class="muted" style="font-size:11px">'+esc(r['실제내원일'])+' 확인</div>':''))+'</td></tr>';
     });
     $('tbl').innerHTML=h;
