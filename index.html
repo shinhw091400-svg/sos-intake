@@ -45,6 +45,12 @@
   .cb.on{border-color:currentColor;font-weight:700}
   .cb.a-all{background:#eef2f7;color:#334155}
   select.need{border:2px solid #dc2626;background:#fef2f2}
+  .vd{color:#d9480f;font-weight:800;font-size:15px;line-height:1.3}.vd small{display:block;font-size:12px;font-weight:700}
+  .vd.past{color:#80868b}
+  .att{background:#fff8f0;border:1px solid #ffd9a8}
+  .pick{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 10px;margin-top:6px;cursor:pointer;font:inherit}
+  .pick:hover{border-color:var(--blue);background:var(--blue2)}
+  .vchk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;cursor:pointer}.vchk input{width:20px;height:20px;accent-color:var(--blue)}
   .hide{display:none !important}
   .muted{color:var(--mute)}
   @media(max-width:700px){main{padding:10px}header{flex-wrap:wrap}}
@@ -86,6 +92,11 @@
 <main>
 
 <section id="p1">
+  <div class="card att">
+    <b>이미 예약된 분께 동행자 추가</b> <span class="muted">· 처음 예약이면 건너뛰세요</span>
+    <div class="row" style="margin-top:6px"><input id="aq" style="flex:1;min-width:200px" placeholder="기존 예약자 이름 또는 방문 시간(예: 14:00, 2026-12-01)" onkeydown="if(event.key==='Enter')findBase()"><button class="sec" onclick="findBase()">찾기</button></div>
+    <div id="aRes"></div><div id="aSel"></div>
+  </div>
   <div class="card">
     <b>예약툴 내용 붙여넣기</b> <span class="muted">· 여러 명이어도 한 번에 붙여넣으면 됩니다</span>
     <textarea id="src" placeholder="고객이 보낸 예약 정보를 그대로 붙여넣으세요 (한국어/중국어 양식 모두 가능)"></textarea>
@@ -102,7 +113,7 @@
         <div><label>연락처 / 메신저 ID</label><input id="contact" placeholder="LINE·WeChat ID, 전화번호"></div>
         <div style="grid-column:span 2"><label>메모 (내부용)</label><input id="memo" style="width:100%"></div>
       </div>
-      <label style="margin-top:10px;font-size:13px;color:var(--ink)"><input type="checkbox" id="group" checked style="width:auto"> 한 팀으로 묶기 (첫 번째가 대표, 나머지는 동행자로 SOS에 등록)</label>
+      <label id="groupLbl" style="margin-top:10px;font-size:13px;color:var(--ink)"><input type="checkbox" id="group" checked style="width:auto"> 한 팀으로 묶기 (첫 번째가 대표, 나머지는 동행자로 SOS에 등록)</label>
       <div class="row" style="margin-top:12px">
         <button class="pri" id="bSos" onclick="save(true)">확인 완료 · SOS로 넘기기</button>
         <button class="sec" id="bSave" onclick="save(false)">시트에만 저장</button>
@@ -176,7 +187,9 @@ function doParse(){
     var accs={}; PARSED.forEach(function(x){accs[x.sosAccount]=1}); if(Object.keys(accs).length>1) r.warnings.push('국적에 따라 SOS 계정이 다른 사람이 섞여 있어요(본사01/루하01). 한 팀은 대표 기준 계정으로 등록되니 확인해 주세요.');
     $('warns').innerHTML=r.warnings.map(function(w){return '<div class="warn">⚠ '+esc(w)+'</div>'}).join('');
     if(!PARSED.length){ $('review').classList.add('hide'); msg('warns','err','예약 정보를 찾지 못했어요. 양식을 확인해 주세요.'); return; }
-    renderRecs(); $('group').checked=PARSED.length>1; $('review').classList.remove('hide');
+    if(ATTACH) PARSED.forEach(function(x){ x.wishDate=x.wishDate||ATTACH['희망일']; x.wishTime=x.wishTime||ATTACH['희망시간']; x.nationality=x.nationality||ATTACH['국적']; });
+    renderRecs(); $('group').checked=PARSED.length>1; $('review').classList.remove('hide'); syncAttachUi();
+    if(ATTACH){ $('route').value=ATTACH['유입경로']||''; $('contact').value=ATTACH['연락처']||''; }
     if(!$('route').value.trim()) $('route').value=(PARSED[0].route||'').replace(/\s*\([A-Za-z ]+\)\s*$/,'');
     if(!$('contact').value.trim()) $('contact').value=PARSED[0].contact||'';
     var ok=PARSED.every(function(x){return x.name&&x.wishDate});
@@ -187,7 +200,7 @@ function doParse(){
 var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역 필요? (필수)','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
 function renderRecs(){
   $('recs').innerHTML=PARSED.map(function(r,i){
-    var h='<div class="rec"><h4>'+(i===0?'대표':'동행자 '+i)+(r.status?' · '+esc(r.status):'')+(r.sosAccount?' · SOS '+esc(r.sosAccount):'')+'</h4><div class="grid">';
+    var h='<div class="rec"><h4>'+(ATTACH?'동행자 '+(i+1)+' → '+esc(ATTACH['환자명'])+' 님과 함께':(i===0?'대표':'동행자 '+i))+(r.status?' · '+esc(r.status):'')+(r.sosAccount?' · SOS '+esc(r.sosAccount):'')+'</h4><div class="grid">';
     FIELDS.forEach(function(f){
       var k=f[0],ty=f[2]||'text',v=r[k]||'';
       h+='<div><label>'+f[1]+'</label>';
@@ -204,6 +217,14 @@ function save(toSos){
   var miss=PARSED.filter(function(r){return !r.name}).length; if(miss){alert('환자명이 비어 있는 건이 있어요.');return;}
   if(!$('route').value.trim() && !confirm('유입경로가 비어 있어요. 이대로 저장할까요?\n(당일 고객 확인 때 필요해요)')) return;
   $('bSos').disabled=$('bSave').disabled=true; msg('saveMsg','info','저장 중…');
+  if(ATTACH){
+    call('addCompanions',[{baseId:ATTACH['접수번호'],records:PARSED,memo:$('memo').value.trim(),toSos:toSos}],function(res){
+      $('bSos').disabled=$('bSave').disabled=false;
+      msg('saveMsg','ok','✓ '+esc(res.repName)+' 님의 동행자 '+res.ids.length+'명 추가됨 ('+res.ids.join(', ')+')<br>SOS: '+esc(res.sos.status)+(res.sos.message?' ('+esc(res.sos.message)+')':'')+'<br><span class="muted">SOS 메모에는 "'+esc(res.repName)+'의 동행자"로 들어갔어요.</span>');
+      $('warns').innerHTML=''; PARSED=[]; $('recs').innerHTML=''; $('src').value=''; $('route').value=''; $('contact').value=''; $('memo').value=''; clearAttach();
+    },function(e){ $('bSos').disabled=$('bSave').disabled=false; $('saveMsg').innerHTML=''; fail(e); });
+    return;
+  }
   call('saveReservations',[{records:PARSED,route:$('route').value.trim(),contact:$('contact').value.trim(),memo:$('memo').value.trim(),group:$('group').checked}],function(res){
     if(!toSos){ done(res,null); return; }
     msg('saveMsg','info','시트 저장 완료. SOS로 넘기는 중…');
@@ -222,6 +243,31 @@ function done(res,s){
   }
   $('warns').innerHTML=''; PARSED=[]; $('recs').innerHTML=''; $('route').value=''; $('contact').value='';
 }
+
+/* ───── 동행자 추가 ───── */
+var ATTACH=null, BASEROWS={};
+function findBase(){
+  var q=$('aq').value.trim(); if(!q){ alert('이름이나 방문 시간을 입력해 주세요.'); return; }
+  $('aRes').innerHTML='<div class="muted" style="margin-top:6px">찾는 중…</div>';
+  call('listReservations',[{mode:'upcoming',q:q,sort:'upcoming'}],function(rows){
+    rows=rows.filter(function(r){return r['구분']==='대표'&&r['도착상태']!=='취소'});
+    BASEROWS={}; rows.forEach(function(r){BASEROWS[r['접수번호']]=r});
+    if(!rows.length){ $('aRes').innerHTML='<div class="muted" style="margin-top:6px">오늘 이후 예약 중에 없어요. 지난 예약이면 전체 예약 현황에서 확인해 주세요.</div>'; return; }
+    $('aRes').innerHTML=rows.slice(0,15).map(function(r){
+      return '<button class="pick" onclick="pickBase(\''+r['접수번호']+'\')"><b>'+esc(r['환자명'])+'</b> · <span style="color:#d9480f;font-weight:700">'+esc(dayShort(r['희망일']))+' '+esc(r['희망시간']||'시간미정')+'</span> · '+esc(r['국적'])+' · '+esc(r['SOS계정']||'')+(r['SOS상태']==='전송완료'?' · SOS 전송됨':' · SOS 미전송')+'</button>';
+    }).join('');
+  });
+}
+function dayShort(d){ if(!d) return '날짜미정'; var p=d.split('-'), dt=new Date(+p[0],+p[1]-1,+p[2]); return (+p[1])+'/'+(+p[2])+'('+WD[dt.getDay()]+')'; }
+function pickBase(id){ ATTACH=BASEROWS[id]||ROWS[id]; $('aRes').innerHTML=''; syncAttachUi(); if(PARSED.length) renderRecs(); }
+function clearAttach(){ ATTACH=null; $('aq').value=''; $('aRes').innerHTML=''; syncAttachUi(); if(PARSED.length) renderRecs(); }
+function syncAttachUi(){
+  var a=ATTACH;
+  $('aSel').innerHTML=a?'<div class="msg ok" style="margin-top:8px"><b>'+esc(a['환자명'])+'</b> 님('+esc(dayShort(a['희망일']))+' '+esc(a['희망시간']||'')+') 예약에 동행자로 추가합니다. 아래에 동행자 예약 내용을 붙여넣고 [예약 보내기]를 누르세요. <a href="#" onclick="clearAttach();return false">선택 해제</a></div>':'';
+  $('groupLbl').classList.toggle('hide',!!a);
+  $('bSos').textContent=a?'확인 완료 · 동행자 추가하고 SOS에 반영':'확인 완료 · SOS로 넘기기';
+}
+function addFrom(id){ var r=ROWS[id]; if(!r) return; tab(1); ATTACH=r; $('aRes').innerHTML=''; syncAttachUi(); $('src').focus(); window.scrollTo(0,0); }
 
 /* ───── 전체 예약 현황 ───── */
 var WD=['일','월','화','수','목','금','토'];
@@ -255,7 +301,7 @@ function load(){
     if(!rows.length){ $('tbl').innerHTML='<tr><td class="muted" style="padding:20px">해당 예약이 없어요.</td></tr>'; return; }
     var byDay=sort!=='created';
     var teamCount={}; rows.forEach(function(r){teamCount[r['팀ID']]=(teamCount[r['팀ID']]||0)+1});
-    var h='<tr><th>내원 예정 시간</th><th>환자</th><th>국적/통역</th><th>시술</th><th>유입경로 · 연락처</th><th>SOS</th><th>도착 확인</th></tr>';
+    var h='<tr><th>내원 예정일·시간</th><th>환자</th><th>국적/통역</th><th>시술</th><th>유입경로 · 연락처</th><th>SOS</th><th>내원 확인</th></tr>';
     var lastDay=null;
     rows.forEach(function(r){
       var id=r['접수번호'], day=r['희망일']||'', isToday=day===today, isPast=day&&day<today, canceled=r['도착상태']==='취소';
@@ -266,13 +312,13 @@ function load(){
       var team=teamCount[r['팀ID']]>1, sos=r['SOS상태']||'미전송', ac=acls(r);
       var sc=sos==='전송완료'||sos==='수동등록'?'ok':(sos==='실패'?'bad':'warn');
       var miss=isPast&&!r['도착상태'];
-      var btns=canceled?'<br><span class="chip bad">취소됨</span>':('<br><button class="sec mini" onclick="openEdit(\''+id+'\')">수정</button>'+(r['구분']==='대표'?' <button class="sec mini" style="color:var(--bad);border-color:var(--bad)" onclick="cancelRes(\''+id+'\')">'+(team?'팀 전체 취소':'취소')+'</button>':''));
-      h+='<tr class="acc-'+ac+(team?' team':'')+(canceled?' cx':'')+'"'+(isToday&&!canceled?' style="background:#fffaf0"':'')+'><td>'+esc(r['희망시간']||'미정')+(byDay?'':'<br><span class="muted">'+esc(day)+'</span>')+'</td>'
+      var btns=canceled?'<br><span class="chip bad">취소됨</span>':('<br><button class="sec mini" onclick="openEdit(\''+id+'\')">수정</button>'+(r['구분']==='대표'?' <button class="sec mini" onclick="addFrom(\''+id+'\')">+ 동행자</button> <button class="sec mini" style="color:var(--bad);border-color:var(--bad)" onclick="cancelRes(\''+id+'\')">'+(team?'팀 전체 취소':'취소')+'</button>':''));
+      h+='<tr class="acc-'+ac+(team?' team':'')+(canceled?' cx':'')+'"'+(isToday&&!canceled?' style="background:#fffaf0"':'')+'><td><div class="vd'+(isPast?' past':'')+'"><small>'+esc(day?dayShort(day):'날짜 미정')+'</small>'+esc(r['희망시간']||'시간 미정')+'</div></td>'
         +'<td><b class="nm">'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span>'+btns+'</td>'
         +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+'</td>'
         +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
         +'<td><span class="chip a-'+ac+'">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리'])+'</span>':'')+((sc==='ok'||canceled)?'':'<br><button class="sec mini" onclick="sendOne(\''+id+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+id+'\');return false">수동등록 표시</a>')+'</td>'
-        +'<td>'+(miss?'<span class="chip bad">도착 미확인</span><br>':'')+'<select onchange="arr(\''+id+'\',this.value)">'+OPT.arrival.map(function(a){return '<option'+(a===r['도착상태']?' selected':'')+' value="'+a+'">'+(a||'-')+'</option>'}).join('')+'</select><div class="muted" style="font-size:11px;margin-top:6px">실제 내원일</div><input type="date" value="'+esc(r['실제내원일']||'')+'" onchange="visit(\''+id+'\',this.value)"></td></tr>';
+        +'<td>'+(miss?'<span class="chip bad">내원 미확인</span><br>':'')+(canceled?'<span class="chip bad">취소됨</span>':'<label class="vchk"><input type="checkbox"'+(r['도착상태']==='도착'?' checked':'')+' onchange="arr(\''+id+'\',this.checked?\'도착\':\'\')"> 내원함</label>'+(r['도착상태']&&r['도착상태']!=='도착'?'<span class="chip warn">'+esc(r['도착상태'])+'</span>':'')+(r['실제내원일']&&r['도착상태']==='도착'?'<div class="muted" style="font-size:11px">'+esc(r['실제내원일'])+' 확인</div>':''))+'</td></tr>';
     });
     $('tbl').innerHTML=h;
     var el=document.getElementById('todayRow'); if(el&&!q&&sort==='oldest') el.scrollIntoView({block:'start'});
