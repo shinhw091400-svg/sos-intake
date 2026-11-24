@@ -94,7 +94,7 @@
 <section id="p1">
   <div class="card att">
     <b>이미 예약된 분께 동행자 추가</b> <span class="muted">· 처음 예약이면 건너뛰세요</span>
-    <div class="row" style="margin-top:6px"><input id="aq" style="flex:1;min-width:200px" placeholder="기존 예약자 이름 또는 방문 시간(예: 14:00, 2026-12-01)" onkeydown="if(event.key==='Enter')findBase()"><button class="sec" onclick="findBase()">찾기</button></div>
+    <div class="row" style="margin-top:6px"><input id="aq" style="flex:1;min-width:200px" placeholder="이름·이니셜 몇 글자만 입력하면 자동으로 뜹니다 (예: TY, CHEN, 14:00)" oninput="typeBase()" onfocus="BASET=0" onkeydown="if(event.key==='Enter')findBase()"><button class="sec" onclick="findBase()">찾기</button></div>
     <div id="aRes"></div><div id="aSel"></div>
   </div>
   <div class="card">
@@ -247,17 +247,30 @@ function done(res,s){
 
 /* ───── 동행자 추가 ───── */
 var ATTACH=null, BASEROWS={};
+var BASECACHE=null, BASET=0, ABUSY=false, ATMR=null;
+function typeBase(){ clearTimeout(ATMR); ATMR=setTimeout(findBase,180); }
+function initialsOf(n){ return String(n||'').toUpperCase().split(/[\s,.\-]+/).filter(String).map(function(w){return w.charAt(0)}).join(''); }
+function matchBase(r,q){
+  var ql=q.toLowerCase(), nm=String(r['환자명']||'').toLowerCase(), qn=ql.replace(/[\s.\-]/g,'');
+  if(nm.indexOf(ql)>=0) return true;
+  if(nm.replace(/[\s.\-]/g,'').indexOf(qn)>=0) return true;
+  if(initialsOf(r['환자명']).toLowerCase().indexOf(qn)===0) return true;           /* 이니셜: TY → TZENG YUEN */
+  if(nm.split(/[\s,.\-]+/).some(function(w){return w.indexOf(ql)===0})) return true;  /* 이름 조각 앞글자 */
+  return [r['희망일'],r['희망시간'],r['연락처'],r['유입경로']].join(' ').toLowerCase().indexOf(ql)>=0;
+}
+function showBase(q){
+  var rows=(BASECACHE||[]).filter(function(r){return r['구분']==='대표'&&r['도착상태']!=='취소'&&matchBase(r,q)});
+  BASEROWS={}; rows.forEach(function(r){BASEROWS[r['접수번호']]=r});
+  if(!rows.length){ $('aRes').innerHTML='<div class="muted" style="margin-top:6px">오늘 이후 예약 중에 없어요. 지난 예약이면 전체 예약 현황에서 확인해 주세요.</div>'; return; }
+  $('aRes').innerHTML=rows.slice(0,15).map(function(r){
+    return '<button class="pick" onclick="pickBase(\''+r['접수번호']+'\')"><b>'+esc(r['환자명'])+'</b> · <span style="color:#d9480f;font-weight:700">'+esc(dayShort(r['희망일']))+' '+esc(r['희망시간']||'시간미정')+'</span> · '+esc(r['국적'])+' · '+esc(r['SOS계정']||'')+(r['SOS상태']==='전송완료'?' · SOS 전송됨':' · SOS 미전송')+'</button>';
+  }).join('');
+}
 function findBase(){
-  var q=$('aq').value.trim(); if(!q){ alert('이름이나 방문 시간을 입력해 주세요.'); return; }
+  var q=$('aq').value.trim(); if(!q){ $('aRes').innerHTML=''; return; }
+  if(BASECACHE && Date.now()-BASET<60000){ showBase(q); return; }
   $('aRes').innerHTML='<div class="muted" style="margin-top:6px">찾는 중…</div>';
-  call('listReservations',[{mode:'upcoming',q:q,sort:'upcoming'}],function(rows){
-    rows=rows.filter(function(r){return r['구분']==='대표'&&r['도착상태']!=='취소'});
-    BASEROWS={}; rows.forEach(function(r){BASEROWS[r['접수번호']]=r});
-    if(!rows.length){ $('aRes').innerHTML='<div class="muted" style="margin-top:6px">오늘 이후 예약 중에 없어요. 지난 예약이면 전체 예약 현황에서 확인해 주세요.</div>'; return; }
-    $('aRes').innerHTML=rows.slice(0,15).map(function(r){
-      return '<button class="pick" onclick="pickBase(\''+r['접수번호']+'\')"><b>'+esc(r['환자명'])+'</b> · <span style="color:#d9480f;font-weight:700">'+esc(dayShort(r['희망일']))+' '+esc(r['희망시간']||'시간미정')+'</span> · '+esc(r['국적'])+' · '+esc(r['SOS계정']||'')+(r['SOS상태']==='전송완료'?' · SOS 전송됨':' · SOS 미전송')+'</button>';
-    }).join('');
-  });
+  call('listReservations',[{mode:'upcoming',q:'',sort:'upcoming'}],function(rows){ BASECACHE=rows; BASET=Date.now(); showBase($('aq').value.trim()||q); });
 }
 function dayShort(d){ if(!d) return '날짜미정'; var p=d.split('-'), dt=new Date(+p[0],+p[1]-1,+p[2]); return (+p[1])+'/'+(+p[2])+'('+WD[dt.getDay()]+')'; }
 function pickBase(id){ ATTACH=BASEROWS[id]||ROWS[id]; $('aRes').innerHTML=''; syncAttachUi(); if(PARSED.length) renderRecs(); }
