@@ -198,14 +198,14 @@ function doParse(){
     $('review').scrollIntoView({behavior:'smooth'});
   });
 }
-var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['interp','통역 필요? (필수)','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
+var FIELDS=[['name','환자명'],['birth','생년월일','date'],['nationality','국적'],['gender','성별','sel:,여,남'],['wishDate','희망일','date'],['wishTime','희망시간','time'],['treat','희망시술'],['visitType','신규/재진 (필수)','sel:,신규,재진'],['interp','통역 필요? (필수)','sel:,O,X'],['note','특이사항·메모(SOS에도 전달)']];
 function renderRecs(){
   $('recs').innerHTML=PARSED.map(function(r,i){
     var h='<div class="rec"><h4>'+(ATTACH?'동행자 '+(i+1)+' → '+esc(ATTACH['환자명'])+' 님과 함께':(i===0?'대표':'동행자 '+i))+(r.status?' · '+esc(r.status):'')+(r.sosAccount?' · SOS '+esc(r.sosAccount):'')+'</h4><div class="grid">';
     FIELDS.forEach(function(f){
       var k=f[0],ty=f[2]||'text',v=r[k]||'';
       h+='<div><label>'+f[1]+'</label>';
-      if(ty.indexOf('sel:')===0){ var need=(k==='interp'&&v!=='O'&&v!=='X'); h+='<select'+(need?' class="need"':'')+' onchange="PARSED['+i+'].'+k+'=this.value;this.classList.toggle(\'need\',this.value!==\'O\'&&this.value!==\'X\')">'+ty.slice(4).split(',').map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>'; }
+      if(ty.indexOf('sel:')===0){ var need=(k==='interp'&&v!=='O'&&v!=='X')||(k==='visitType'&&!v); h+='<select'+(need?' class="need"':'')+' onchange="PARSED['+i+'].'+k+'=this.value;this.classList.toggle(\'need\','+(k==='visitType'?'!this.value':'this.value!==\'O\'&&this.value!==\'X\'')+')">'+ty.slice(4).split(',').map(function(o){return '<option'+(o===v?' selected':'')+'>'+o+'</option>'}).join('')+'</select>'; }
       else h+='<input type="'+ty+'" value="'+esc(v)+'" onchange="PARSED['+i+'].'+k+'=this.value">';
       h+='</div>';
     });
@@ -214,6 +214,8 @@ function renderRecs(){
 }
 function save(toSos){
   var noI=PARSED.filter(function(r){return r.interp!=='O'&&r.interp!=='X'}).length;
+  var noV=PARSED.filter(function(r){return !r.visitType}).length;
+  if(toSos&&noV){ alert('신규/재진을 모든 고객에 선택해 주세요.'); var s0=document.querySelector('#recs select.need'); if(s0){s0.scrollIntoView({block:'center'}); s0.focus();} return; }
   if(toSos&&noI){ alert('통역 여부(O/X)를 모든 고객에 선택해 주세요.'); var s=document.querySelector('#recs select.need'); if(s){s.scrollIntoView({block:'center'}); s.focus();} return; }
   var miss=PARSED.filter(function(r){return !r.name}).length; if(miss){alert('환자명이 비어 있는 건이 있어요.');return;}
   if(!$('route').value.trim() && !confirm('유입경로가 비어 있어요. 이대로 저장할까요?\n(당일 고객 확인 때 필요해요)')) return;
@@ -329,7 +331,7 @@ function load(){
       var btns=canceled?'<br><span class="chip bad">취소됨</span>':('<br><button class="sec mini" onclick="openEdit(\''+id+'\')">수정</button>'+(r['구분']==='대표'?' <button class="sec mini" onclick="addFrom(\''+id+'\')">+ 동행자</button> <button class="sec mini" style="color:var(--bad);border-color:var(--bad)" onclick="cancelRes(\''+id+'\')">'+(team?'팀 전체 취소':'취소')+'</button>':''));
       h+='<tr class="acc-'+ac+(team?' team':'')+(canceled?' cx':'')+'"'+(isToday&&!canceled?' style="background:#fffaf0"':'')+'><td><div class="vd'+(isPast?' past':'')+'"><small>'+esc(day?dayShort(day):'날짜 미정')+'</small>'+esc(r['희망시간']||'시간 미정')+'</div></td>'
         +'<td><b class="nm">'+esc(r['환자명'])+'</b> <span class="chip">'+esc(r['구분'])+'</span>'+(team?' <span class="chip">'+esc(r['팀ID'])+' 팀</span>':'')+'<br><span class="muted">'+esc(r['생년월일'])+' · '+esc(r['성별'])+'<br>접수 '+esc((r['접수일시']||'').slice(0,10))+'</span>'+btns+'</td>'
-        +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+'</td><td>'+esc(r['희망시술']||'-')+(r['시술원문']&&r['시술원문']!==r['희망시술']?'<br><span class="muted" style="font-size:11px">원문: '+esc(r['시술원문'])+'</span>':'')+'</td>'
+        +'<td>'+esc(r['국적'])+'<br>통역 '+esc(r['통역']||'-')+(r['신규재진']?'<br><span class="chip '+(r['신규재진']==='신규'?'ok':'')+'">'+esc(r['신규재진'])+'</span>':'')+'</td><td>'+esc(r['희망시술']||'-')+(r['시술원문']&&r['시술원문']!==r['희망시술']?'<br><span class="muted" style="font-size:11px">원문: '+esc(r['시술원문'])+'</span>':'')+'</td>'
         +'<td><b>'+esc(r['유입경로']||'미입력')+'</b><br>'+esc(r['연락처']||'')+(r['메모']?'<br><span class="muted">'+esc(r['메모'])+'</span>':'')+'</td>'
         +'<td><span class="chip a-'+ac+'">'+esc(r['SOS계정']||'')+'</span> <span class="chip '+sc+'">'+esc(sos)+'</span>'+(r['병원처리']?'<br><span class="chip '+(r['병원처리']==='병원 완료'?'ok':'warn')+'">'+esc(r['병원처리']==='병원 완료'?'병원 확정 완료':r['병원처리'])+'</span>'+(r['병원확정']?'<div class="muted" style="font-size:11px">확정 '+esc(r['병원확정'])+(r['희망일']&&String(r['병원확정']).slice(0,10)!==r['희망일']?' <b style="color:var(--bad)">(희망일과 다름)</b>':'')+'</div>':''):'')+((sc==='ok'||canceled)?'':'<br><button class="sec mini" onclick="sendOne(\''+id+'\')">SOS로 넘기기</button><br><a href="#" style="font-size:11px" onclick="manual(\''+id+'\');return false">수동등록 표시</a>')+'</td>'
         +'<td>'+(miss?'<span class="chip bad">내원 미확인</span><br>':'')+(canceled?'<span class="chip bad">취소됨</span>':'<label class="vchk"><input type="checkbox"'+(r['도착상태']==='도착'?' checked':'')+' onchange="arr(\''+id+'\',this.checked?\'도착\':\'\')"> 내원함</label>'+(r['도착상태']&&r['도착상태']!=='도착'?'<span class="chip warn">'+esc(r['도착상태'])+'</span>':'')+(r['실제내원일']&&r['도착상태']==='도착'?'<div class="muted" style="font-size:11px">'+esc(r['실제내원일'])+' 확인</div>':''))+'</td></tr>';
@@ -339,7 +341,7 @@ function load(){
   });
 }
 /* ───── 수정 / 취소 ───── */
-var EF=[['환자명','text'],['생년월일','date'],['국적','text'],['성별','sel:,여,남'],['희망일','date'],['희망시간','time'],['희망시술','text'],['통역','sel:,O,X'],['메모','text'],['유입경로','text'],['연락처','text']];
+var EF=[['환자명','text'],['생년월일','date'],['국적','text'],['성별','sel:,여,남'],['희망일','date'],['희망시간','time'],['희망시술','text'],['통역','sel:,O,X'],['신규재진','sel:,신규,재진'],['메모','text'],['유입경로','text'],['연락처','text']];
 var EDIT_ID='';
 function openEdit(id){
   var r=ROWS[id]; if(!r) return; EDIT_ID=id;
