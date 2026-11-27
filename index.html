@@ -213,6 +213,8 @@ function renderRecs(){
   }).join('');
 }
 function save(toSos){
+  var bad=PARSED.filter(function(r){return /[\u3400-\u9fff]/.test((r.treat||'')+' '+(r.note||''))||/번역 필요/.test((r.treat||'')+' '+(r.note||''))});
+  if(bad.length){ alert('희망시술/특이사항에 중국어 또는 "(번역 필요)"가 남아 있어요.\n한글로 고친 뒤 [확인 완료]를 눌러 주세요. (SOS에는 한글만 들어갑니다)'); return; }
   var noI=PARSED.filter(function(r){return r.interp!=='O'&&r.interp!=='X'}).length;
   var noV=PARSED.filter(function(r){return !r.visitType}).length;
   if(toSos&&noV){ alert('신규/재진을 모든 고객에 선택해 주세요.'); var s0=document.querySelector('#recs select.need'); if(s0){s0.scrollIntoView({block:'center'}); s0.focus();} return; }
